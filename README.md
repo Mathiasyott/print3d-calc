@@ -25,7 +25,7 @@ App PWA para calcular el **costo real** de tus impresiones 3D y el **precio de v
 1. Creá un repositorio en GitHub (ej: `print3d-calc`)
 2. Subí todos estos archivos
 3. Ir a **Settings → Pages → Source: main branch / root**
-4. Tu app queda en: `(https://github.com/Mathiasyott/print3d-calc)`
+4. Tu app queda en: `(https://TU-USUARIO.github.io/print3d-calc)`
 
 ## 📁 Estructura
 
