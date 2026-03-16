@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Print3D Calc">
+<meta name="theme-color" content="#ffffff">
+<title>Calculadora Impresión 3D</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #f7f7f5;
+    --bg3: #f0efe9;
+    --text: #171717;
+    --text2: #555550;
+    --text3: #999990;
+    --border: rgba(0,0,0,0.12);
+    --border2: rgba(0,0,0,0.20);
+    --accent: #171717;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --green-bg: #EAF3DE; --green-border: #C0DD97; --green-text: #27500A; --green-mid: #3B6D11;
+    --amber-bg: #FAEEDA; --amber-border: #FAC775; --amber-text: #633806; --amber-mid: #854F0B;
+    --blue-bg: #E6F1FB; --blue-border: #B5D4F4; --blue-text: #0C447C; --blue-mid: #185FA5;
+    --red-bg: #FCEBEB; --red-border: #F7C1C1; --red-text: #791F1F;
+    --teal-bg: #E1F5EE; --teal-border: #9FE1CB; --teal-text: #085041;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a; --bg2: #242424; --bg3: #2e2e2e;
+      --text: #f0f0ee; --text2: #aaaaaa; --text3: #666660;
+      --border: rgba(255,255,255,0.10); --border2: rgba(255,255,255,0.18);
+      --accent: #f0f0ee;
+      --green-bg: #173404; --green-border: #27500A; --green-text: #C0DD97;
+      --amber-bg: #412402; --amber-border: #633806; --amber-text: #FAC775;
+      --blue-bg: #042C53; --blue-border: #0C447C; --blue-text: #B5D4F4;
+      --red-bg: #501313; --red-border: #791F1F; --red-text: #F7C1C1;
+      --teal-bg: #04342C; --teal-border: #085041; --teal-text: #9FE1CB;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); font-size: 15px; min-height: 100vh; }
+  
+  /* Header */
+  .app-header { background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 14px 16px 12px; position: sticky; top: 0; z-index: 10; }
+  .app-header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+  .app-header p { font-size: 12px; color: var(--text2); margin-top: 1px; }
+
+  /* Main layout */
+  .main { max-width: 680px; margin: 0 auto; padding: 12px 12px 80px; }
+  
+  /* Currency bar */
+  .currency-bar { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .toggle { display: flex; border: 0.5px solid var(--border2); border-radius: 8px; overflow: hidden; }
+  .toggle button { padding: 6px 16px; font-size: 13px; font-weight: 500; border: none; background: none; color: var(--text2); cursor: pointer; }
+  .toggle button.active { background: var(--accent); color: var(--bg); }
+  .rate-field { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); }
+  .rate-field input { width: 72px; height: 30px; padding: 0 8px; font-size: 13px; border: 0.5px solid var(--border2); border-radius: 7px; background: var(--bg); color: var(--text); }
+  .update-btn { margin-left: auto; display: flex; align-items: center; gap: 6px; padding: 7px 12px; background: var(--accent); color: var(--bg); border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .update-btn:disabled { opacity: 0.5; cursor: default; }
+  .update-btn svg { width: 14px; height: 14px; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Price update status */
+  .price-status { font-size: 12px; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; display: none; }
+  .price-status.show { display: block; }
+  .price-status.ok { background: var(--green-bg); color: var(--green-text); border: 0.5px solid var(--green-border); }
+  .price-status.err { background: var(--red-bg); color: var(--red-text); border: 0.5px solid var(--red-border); }
+  .price-status.loading { background: var(--blue-bg); color: var(--blue-text); border: 0.5px solid var(--blue-border); }
+
+  /* Sections */
+  .section { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 14px; margin-bottom: 10px; }
+  .section-title { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .field { margin-bottom: 11px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 4px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 420px) { .field-row3 { grid-template-columns: 1fr 1fr; } }
+  input[type=number], select { width: 100%; height: 38px; padding: 0 10px; font-size: 14px; color: var(--text); background: var(--bg2); border: 0.5px solid var(--border); border-radius: 8px; appearance: none; -webkit-appearance: none; }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 26px; }
+  .hint { font-size: 11px; color: var(--text3); margin-top: 3px; line-height: 1.4; }
+  .hint.updated { color: var(--green-mid); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .range-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .range-val { font-weight: 600; color: var(--text); }
+
+  /* Printer selector */
+  .printer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 12px; }
+  @media (max-width: 400px) { .printer-grid { grid-template-columns: repeat(2, 1fr); } }
+  .printer-btn { padding: 8px 6px; border: 0.5px solid var(--border2); border-radius: 9px; font-size: 11px; font-weight: 500; cursor: pointer; text-align: center; background: var(--bg2); color: var(--text); line-height: 1.3; }
+  .printer-btn .pb-brand { display: block; font-size: 10px; color: var(--text3); margin-top: 2px; font-weight: 400; }
+  .printer-btn .pb-tag { display: block; font-size: 9px; color: var(--blue-mid); margin-top: 2px; font-weight: 500; }
+  .printer-btn.selected { border: 1.5px solid var(--accent); background: var(--bg); }
+
+  /* Results */
+  .results-wrap { background: var(--bg2); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 14px; margin-bottom: 10px; }
+  .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .metric { background: var(--bg); border-radius: var(--radius); padding: 11px 13px; border: 0.5px solid var(--border); }
+  .metric-label { font-size: 11px; color: var(--text2); margin-bottom: 3px; }
+  .metric-value { font-size: 19px; font-weight: 600; color: var(--text); }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .breakdown { background: var(--bg); border-radius: var(--radius); border: 0.5px solid var(--border); overflow: hidden; }
+  .br-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 13px; border-bottom: 0.5px solid var(--border); }
+  .br-row:last-child { border-bottom: none; }
+  .br-row.total { background: var(--bg2); }
+  .br-label { font-size: 13px; color: var(--text2); }
+  .br-row.total .br-label { font-weight: 600; color: var(--text); font-size: 14px; }
+  .br-vals { text-align: right; }
+  .br-main { font-size: 13px; font-weight: 500; color: var(--text); }
+  .br-row.total .br-main { font-size: 15px; font-weight: 700; }
+  .br-alt { font-size: 11px; color: var(--text3); }
+
+  /* Sale prices */
+  .sale-title { font-size: 12px; font-weight: 600; color: var(--text2); margin: 12px 0 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .sale-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .sale-card { border-radius: var(--radius); padding: 11px 10px; text-align: center; border: 0.5px solid; }
+  .sale-card.low { background: var(--amber-bg); border-color: var(--amber-border); }
+  .sale-card.mid { background: var(--green-bg); border-color: var(--green-border); }
+  .sale-card.high { background: var(--blue-bg); border-color: var(--blue-border); }
+  .sc-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .sale-card.low .sc-label { color: var(--amber-mid); }
+  .sale-card.mid .sc-label { color: var(--green-mid); }
+  .sale-card.high .sc-label { color: var(--blue-mid); }
+  .sc-price { font-size: 17px; font-weight: 700; }
+  .sale-card.low .sc-price { color: var(--amber-text); }
+  .sale-card.mid .sc-price { color: var(--green-text); }
+  .sale-card.high .sc-price { color: var(--blue-text); }
+  .sc-alt { font-size: 10px; margin-top: 2px; }
+  .sale-card.low .sc-alt { color: var(--amber-mid); }
+  .sale-card.mid .sc-alt { color: var(--green-mid); }
+  .sale-card.high .sc-alt { color: var(--blue-mid); }
+  .sc-margin { font-size: 10px; margin-top: 4px; }
+  .sale-card.low .sc-margin { color: var(--amber-mid); }
+  .sale-card.mid .sc-margin { color: var(--green-mid); }
+  .sale-card.high .sc-margin { color: var(--blue-mid); }
+
+  /* Install banner */
+  .install-banner { background: var(--teal-bg); border: 0.5px solid var(--teal-border); border-radius: var(--radius-lg); padding: 12px 14px; margin-bottom: 10px; display: none; }
+  .install-banner.show { display: flex; align-items: center; gap: 10px; }
+  .install-banner p { font-size: 13px; color: var(--teal-text); flex: 1; }
+  .install-banner button { padding: 7px 14px; background: var(--teal-text); color: var(--teal-bg); border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .ib-dismiss { background: none !important; color: var(--teal-text) !important; padding: 7px 6px !important; }
+
+  /* Footer */
+  .footer { text-align: center; font-size: 11px; color: var(--text3); padding: 8px 0 16px; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>🖨️ Calculadora Impresión 3D</h1>
+  <p>Costo real · Precio de venta · Uruguay</p>
+</div>
+
+<div class="main">
+
+  <!-- Install PWA banner -->
+  <div class="install-banner" id="installBanner">
+    <p>📱 Instalá esta app en tu dispositivo para usarla offline</p>
+    <button onclick="installApp()">Instalar</button>
+    <button class="ib-dismiss" onclick="document.getElementById('installBanner').classList.remove('show')">✕</button>
+  </div>
+
+  <!-- Currency + Update -->
+  <div class="currency-bar">
+    <div class="toggle">
+      <button class="active" id="btnUSD" onclick="setCurrency('USD')">USD $</button>
+      <button id="btnUYU" onclick="setCurrency('UYU')">UYU $U</button>
+    </div>
+    <div class="rate-field" id="rateField" style="display:none">
+      <span>1 USD =</span>
+      <input type="number" id="usdRate" value="40" min="1" max="300" step="0.5" oninput="calc()">
+      <span>$U</span>
+    </div>
+    <button class="update-btn" id="updateBtn" onclick="updatePrices()">
+      <svg id="updateIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M21 12a9 9 0 01-15.66 6.16M3 12a9 9 0 0115.66-6.16M3 6v4h4M21 18v-4h-4"/>
+      </svg>
+      Actualizar precios
+    </button>
+  </div>
+
+  <div class="price-status" id="priceStatus"></div>
+
+  <!-- Printer -->
+  <div class="section">
+    <div class="section-title">Impresora</div>
+    <div class="printer-grid" id="printerGrid"></div>
+    <div class="field-row">
+      <div class="field">
+        <label>Consumo promedio (W)</label>
+        <input type="number" id="watts" value="120" min="10" max="1500" step="5" oninput="calc()">
+        <div class="hint" id="wattsHint">Ender 3 V3 SE ≈ 120W promedio</div>
+      </div>
+      <div class="field">
+        <label>Costo kWh (<span class="cur">USD</span>)</label>
+        <input type="number" id="kwh" value="0.09" min="0.001" max="500" step="0.001" oninput="calc()">
+        <div class="hint" id="kwhHint">Uruguay ≈ $0.09–0.12 USD/kWh</div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Valor impresora (<span class="cur">USD</span>)</label>
+        <input type="number" id="printerCost" value="200" min="50" max="500000" step="50" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>Vida útil (horas)</label>
+        <input type="number" id="printerLife" value="2000" min="100" max="30000" step="500" oninput="calc()">
+        <div class="hint">Desgaste por hora de uso</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filamento -->
+  <div class="section">
+    <div class="section-title">Filamento</div>
+    <div class="field-row3">
+      <div class="field">
+        <label>Material</label>
+        <select id="material" onchange="calc()">
+          <option>PLA</option><option>PETG</option><option>ABS</option>
+          <option>TPU</option><option>ASA</option><option>Resina</option>
+          <option>PLA+</option><option>Nylon</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Precio rollo 1kg (<span class="cur">USD</span>)</label>
+        <input type="number" id="spoolPrice" value="18" min="1" max="50000" step="1" oninput="calc()">
+        <div class="hint" id="spoolHint">≈ $18 USD promedio PLA</div>
+      </div>
+      <div class="field">
+        <label>Peso pieza (g)</label>
+        <input type="number" id="weightG" value="50" min="0.1" max="2000" step="1" oninput="calc()">
+      </div>
+    </div>
+    <div class="field">
+      <label>Falla / desperdicio: <span class="range-val" id="failOut">5%</span></label>
+      <input type="range" id="failRate" min="0" max="40" value="5" step="1" oninput="document.getElementById('failOut').textContent=this.value+'%';calc()">
+      <div class="range-labels"><span>0%</span><span>40%</span></div>
+    </div>
+  </div>
+
+  <!-- Tiempo -->
+  <div class="section">
+    <div class="section-title">Tiempo y costos extra</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Duración impresión (hs)</label>
+        <input type="number" id="printHours" value="4" min="0.1" max="500" step="0.5" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>Internet / hora (<span class="cur">USD</span>)</label>
+        <input type="number" id="internet" value="0.02" min="0" max="100" step="0.01" oninput="calc()">
+        <div class="hint">Costo mensual ÷ horas del mes</div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Tu mano de obra / hora (<span class="cur">USD</span>)</label>
+        <input type="number" id="labor" value="3" min="0" max="10000" step="0.5" oninput="calc()">
+      </div>
+      <div class="field">
+        <label>Horas de trabajo tuyo</label>
+        <input type="number" id="laborHours" value="0.5" min="0" max="20" step="0.25" oninput="calc()">
+        <div class="hint">Setup, limpieza, post-proceso</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Margen de ganancia objetivo: <span class="range-val" id="marginOut">50%</span></label>
+      <input type="range" id="margin" min="5" max="400" value="50" step="5" oninput="document.getElementById('marginOut').textContent=this.value+'%';calc()">
+      <div class="range-labels"><span>5%</span><span>400%</span></div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-wrap">
+    <div class="metrics-grid">
+      <div class="metric"><div class="metric-label">Electricidad</div><div class="metric-value" id="v-electric">—</div><div class="metric-sub" id="s-electric"></div></div>
+      <div class="metric"><div class="metric-label">Filamento</div><div class="metric-value" id="v-filament">—</div><div class="metric-sub" id="s-filament"></div></div>
+      <div class="metric"><div class="metric-label">Desgaste impresora</div><div class="metric-value" id="v-wear">—</div><div class="metric-sub" id="s-wear"></div></div>
+      <div class="metric"><div class="metric-label">Mano de obra</div><div class="metric-value" id="v-labor">—</div><div class="metric-sub" id="s-labor"></div></div>
+    </div>
+    <div class="breakdown">
+      <div class="br-row"><span class="br-label">Filamento + desperdicio</span><div class="br-vals"><div class="br-main" id="r-filament">—</div><div class="br-alt" id="r-filament-alt"></div></div></div>
+      <div class="br-row"><span class="br-label">Electricidad</span><div class="br-vals"><div class="br-main" id="r-electric">—</div><div class="br-alt" id="r-electric-alt"></div></div></div>
+      <div class="br-row"><span class="br-label">Desgaste impresora</span><div class="br-vals"><div class="br-main" id="r-wear">—</div><div class="br-alt" id="r-wear-alt"></div></div></div>
+      <div class="br-row"><span class="br-label">Internet</span><div class="br-vals"><div class="br-main" id="r-internet">—</div><div class="br-alt" id="r-internet-alt"></div></div></div>
+      <div class="br-row"><span class="br-label">Mano de obra</span><div class="br-vals"><div class="br-main" id="r-labor">—</div><div class="br-alt" id="r-labor-alt"></div></div></div>
+      <div class="br-row total"><span class="br-label">Costo total</span><div class="br-vals"><div class="br-main" id="r-total">—</div><div class="br-alt" id="r-total-alt"></div></div></div>
+    </div>
+    <div class="sale-title">Precios de venta sugeridos</div>
+    <div class="sale-grid">
+      <div class="sale-card low"><div class="sc-label">Mínimo</div><div class="sc-price" id="sale-low">—</div><div class="sc-alt" id="sale-low-alt"></div><div class="sc-margin">+15%</div></div>
+      <div class="sale-card mid"><div class="sc-label">Objetivo</div><div class="sc-price" id="sale-mid">—</div><div class="sc-alt" id="sale-mid-alt"></div><div class="sc-margin" id="sale-mid-m">+50%</div></div>
+      <div class="sale-card high"><div class="sc-label">Premium</div><div class="sc-price" id="sale-high">—</div><div class="sc-alt" id="sale-high-alt"></div><div class="sc-margin" id="sale-high-m">+110%</div></div>
+    </div>
+  </div>
+
+  <div class="footer">Precios actualizados: <span id="lastUpdate">nunca</span></div>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────
+let currency = 'USD';
+let deferredPrompt = null;
+
+const printers = [
+  {name:"Ender 3 V3 SE", brand:"Creality", watts:120, cost:185, life:2000, tag:"Tu impresora"},
+  {name:"Ender 3 Pro",   brand:"Creality", watts:125, cost:150, life:2000},
+  {name:"Ender 3 S1",    brand:"Creality", watts:130, cost:250, life:2000},
+  {name:"Bambu A1 Mini", brand:"Bambu Lab",watts:150, cost:350, life:3000},
+  {name:"Bambu P1S",     brand:"Bambu Lab",watts:350, cost:700, life:4000},
+  {name:"Prusa MK4",     brand:"Prusa",    watts:160, cost:1100,life:5000},
+  {name:"Voron 2.4",     brand:"DIY",      watts:400, cost:800, life:6000},
+  {name:"Personalizada", brand:"",         watts:null,cost:null,life:null},
+];
+
+const USD_DEF = {kwh:0.09, spool:18, internet:0.02, labor:3, printerCost:200};
+const UYU_DEF = {kwh:3.6,  spool:720,internet:0.8,  labor:120,printerCost:8000};
+
+// ─── Build printer buttons ────────────────────────────────
+const grid = document.getElementById('printerGrid');
+printers.forEach((p,i) => {
+  const b = document.createElement('button');
+  b.className = 'printer-btn' + (i===0?' selected':'');
+  b.innerHTML = `${p.name}<span class="pb-brand">${p.brand}</span>${p.tag?`<span class="pb-tag">${p.tag}</span>`:''}`;
+  b.onclick = () => {
+    document.querySelectorAll('.printer-btn').forEach(x=>x.classList.remove('selected'));
+    b.classList.add('selected');
+    const rate = parseFloat(document.getElementById('usdRate').value)||40;
+    const m = currency==='UYU' ? rate : 1;
+    if(p.watts) document.getElementById('watts').value = p.watts;
+    if(p.cost)  document.getElementById('printerCost').value = Math.round(p.cost*m);
+    if(p.life)  document.getElementById('printerLife').value = p.life;
+    calc();
+  };
+  grid.appendChild(b);
+});
+
+// ─── Currency toggle ──────────────────────────────────────
+function setCurrency(c) {
+  currency = c;
+  document.getElementById('btnUSD').classList.toggle('active', c==='USD');
+  document.getElementById('btnUYU').classList.toggle('active', c==='UYU');
+  document.getElementById('rateField').style.display = c==='UYU' ? 'flex' : 'none';
+  const d = c==='UYU' ? UYU_DEF : USD_DEF;
+  document.getElementById('kwh').value        = d.kwh;
+  document.getElementById('spoolPrice').value = d.spool;
+  document.getElementById('internet').value   = d.internet;
+  document.getElementById('labor').value      = d.labor;
+  document.getElementById('printerCost').value= d.printerCost;
+  document.getElementById('kwhHint').textContent = c==='UYU' ? 'Uruguay ≈ $U 3.5–5 /kWh (UTE)' : 'Uruguay ≈ $0.09–0.12 USD/kWh';
+  document.querySelectorAll('.cur').forEach(el => el.textContent = c);
+  calc();
+}
+
+// ─── Format helpers ───────────────────────────────────────
+function fUSD(v){ return '$' + v.toFixed(2); }
+function fUYU(v){ return '$U ' + Math.round(v).toLocaleString('es-UY'); }
+function fmt(v) { return currency==='UYU' ? fUYU(v) : fUSD(v); }
+function fmtAlt(v) {
+  const rate = parseFloat(document.getElementById('usdRate').value)||40;
+  return currency==='UYU' ? fUSD(v/rate) : fUYU(v*rate);
+}
+
+function setRow(id, v) {
+  document.getElementById(id).textContent = fmt(v);
+  const altEl = document.getElementById(id+'-alt');
+  if(altEl) altEl.textContent = fmtAlt(v);
+}
+
+// ─── Main calc ────────────────────────────────────────────
+function calc() {
+  const rate        = parseFloat(document.getElementById('usdRate').value)||40;
+  const watts       = parseFloat(document.getElementById('watts').value)||0;
+  const kwh         = parseFloat(document.getElementById('kwh').value)||0;
+  const printerCost = parseFloat(document.getElementById('printerCost').value)||0;
+  const printerLife = parseFloat(document.getElementById('printerLife').value)||1;
+  const spoolPrice  = parseFloat(document.getElementById('spoolPrice').value)||0;
+  const weightG     = parseFloat(document.getElementById('weightG').value)||0;
+  const failRate    = parseFloat(document.getElementById('failRate').value)||0;
+  const printHours  = parseFloat(document.getElementById('printHours').value)||0;
+  const internetHr  = parseFloat(document.getElementById('internet').value)||0;
+  const labor       = parseFloat(document.getElementById('labor').value)||0;
+  const laborHours  = parseFloat(document.getElementById('laborHours').value)||0;
+  const marginPct   = parseFloat(document.getElementById('margin').value)||50;
+
+  const electric      = (watts/1000)*kwh*printHours;
+  const filamentBase  = (weightG/1000)*spoolPrice;
+  const filamentTotal = filamentBase*(1+failRate/100);
+  const wear          = (printerCost/printerLife)*printHours;
+  const internetCost  = internetHr*printHours;
+  const laborCost     = labor*laborHours;
+  const total         = electric+filamentTotal+wear+internetCost+laborCost;
+
+  document.getElementById('v-electric').textContent = fmt(electric);
+  document.getElementById('s-electric').textContent = ((watts/1000)*printHours).toFixed(2)+' kWh';
+  document.getElementById('v-filament').textContent = fmt(filamentTotal);
+  document.getElementById('s-filament').textContent = weightG+'g · '+failRate+'% falla';
+  document.getElementById('v-wear').textContent = fmt(wear);
+  document.getElementById('s-wear').textContent = fmt(printerCost/printerLife)+'/hr';
+  document.getElementById('v-labor').textContent = fmt(laborCost);
+  document.getElementById('s-labor').textContent = laborHours+'h × '+fmt(labor)+'/h';
+
+  setRow('r-filament', filamentTotal);
+  setRow('r-electric', electric);
+  setRow('r-wear', wear);
+  setRow('r-internet', internetCost);
+  setRow('r-labor', laborCost);
+  setRow('r-total', total);
+
+  const saleMin  = total*1.15;
+  const saleMid  = total*(1+marginPct/100);
+  const saleHigh = total*(1+(marginPct/100)*2.2);
+
+  document.getElementById('sale-low').textContent  = fmt(saleMin);
+  document.getElementById('sale-low-alt').textContent  = fmtAlt(saleMin);
+  document.getElementById('sale-mid').textContent  = fmt(saleMid);
+  document.getElementById('sale-mid-alt').textContent  = fmtAlt(saleMid);
+  document.getElementById('sale-high').textContent = fmt(saleHigh);
+  document.getElementById('sale-high-alt').textContent = fmtAlt(saleHigh);
+  document.getElementById('sale-mid-m').textContent  = '+'+marginPct+'% margen';
+  document.getElementById('sale-high-m').textContent = '+'+(Math.round(marginPct*2.2))+'% margen';
+}
+
+// ─── Price updater via Claude API ─────────────────────────
+function extractJSON(text) {
+  try { return JSON.parse(text.trim()); } catch(_) {}
+  const s = text.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+  try { return JSON.parse(s); } catch(_) {}
+  const m2 = text.match(/\{[\s\S]*\}/);
+  if(m2) { try { return JSON.parse(m2[0]); } catch(_) {} }
+  return null;
+}
+
+async function updatePrices() {
+  const btn    = document.getElementById('updateBtn');
+  const icon   = document.getElementById('updateIcon');
+  const status = document.getElementById('priceStatus');
+  const mat    = document.getElementById('material').value;
+
+  btn.disabled = true;
+  icon.classList.add('spin');
+  status.className = 'price-status show loading';
+  status.textContent = 'Consultando precios de referencia...';
+
+  try {
+    const prompt = "Return ONLY a valid JSON object with NO text before or after, NO markdown. Just the raw JSON:\n"
+      + '{"usd_uyu":43,"kwh_usd":0.095,"kwh_uyu":4.1,"spool_usd":18,"spool_uyu":780,"internet_usd":0.02,"internet_uyu":0.86}\n\n'
+      + "Update those values to realistic 2025-2026 reference prices for Uruguay. Material: " + mat + ".\n"
+      + "Respond with ONLY the JSON object. Absolutely no other text.";
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 200,
+        system: 'You are a JSON API. Output ONLY raw JSON. No prose, no markdown, no explanation. Start your response with { and end with }.',
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(function(){ return {}; });
+      throw new Error((errData.error && errData.error.message) || ('HTTP ' + res.status));
+    }
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const block = data.content && data.content.find(function(b){ return b.type === 'text'; });
+    if (!block) throw new Error('Respuesta vacía');
+
+    const p = extractJSON(block.text);
+    if (!p) throw new Error('JSON inválido: ' + block.text.slice(0, 80));
+
+    const isUYU = currency === 'UYU';
+
+    if (p.usd_uyu) document.getElementById('usdRate').value = (+p.usd_uyu).toFixed(1);
+
+    if (isUYU && p.kwh_uyu) {
+      document.getElementById('kwh').value = (+p.kwh_uyu).toFixed(3);
+      document.getElementById('kwhHint').textContent = 'Actualizado - UTE: $U ' + (+p.kwh_uyu).toFixed(2) + '/kWh';
+      document.getElementById('kwhHint').className = 'hint updated';
+    } else if (!isUYU && p.kwh_usd) {
+      document.getElementById('kwh').value = (+p.kwh_usd).toFixed(4);
+      document.getElementById('kwhHint').textContent = 'Actualizado - UTE: $' + (+p.kwh_usd).toFixed(4) + '/kWh';
+      document.getElementById('kwhHint').className = 'hint updated';
+    }
+
+    if (isUYU && p.spool_uyu) {
+      document.getElementById('spoolPrice').value = Math.round(+p.spool_uyu);
+      document.getElementById('spoolHint').textContent = 'Actualizado - ' + mat + ' 1kg: $U ' + Math.round(+p.spool_uyu);
+      document.getElementById('spoolHint').className = 'hint updated';
+    } else if (!isUYU && p.spool_usd) {
+      document.getElementById('spoolPrice').value = (+p.spool_usd).toFixed(2);
+      document.getElementById('spoolHint').textContent = 'Actualizado - ' + mat + ' 1kg: $' + (+p.spool_usd).toFixed(2);
+      document.getElementById('spoolHint').className = 'hint updated';
+    }
+
+    if (isUYU && p.internet_uyu) document.getElementById('internet').value = (+p.internet_uyu).toFixed(3);
+    else if (!isUYU && p.internet_usd) document.getElementById('internet').value = (+p.internet_usd).toFixed(3);
+
+    const now = new Date().toLocaleString('es-UY');
+    document.getElementById('lastUpdate').textContent = now;
+    localStorage.setItem('lastUpdate', now);
+    if (p.usd_uyu) localStorage.setItem('usdRate', String(p.usd_uyu));
+
+    status.className = 'price-status show ok';
+    status.textContent = 'Precios de referencia actualizados - ' + now;
+    calc();
+
+  } catch(e) {
+    status.className = 'price-status show err';
+    const msg = e.message || String(e);
+    if (msg.indexOf('fetch') !== -1 || msg.indexOf('network') !== -1 || msg.indexOf('Network') !== -1) {
+      status.textContent = 'Sin conexion a internet. Edita los valores manualmente.';
+    } else {
+      status.textContent = 'Error al actualizar: ' + msg;
+    }
+    console.error('updatePrices:', e);
+  } finally {
+    btn.disabled = false;
+    icon.classList.remove('spin');
+  }
+}
+
+
+// ─── PWA install ──────────────────────────────────────────
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').classList.add('show');
+});
+
+function installApp() {
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => {
+    deferredPrompt = null;
+    document.getElementById('installBanner').classList.remove('show');
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').classList.remove('show');
+});
+
+// ─── Restore saved prefs ──────────────────────────────────
+const savedRate = localStorage.getItem('usdRate');
+if(savedRate) document.getElementById('usdRate').value = savedRate;
+const savedUpdate = localStorage.getItem('lastUpdate');
+if(savedUpdate) document.getElementById('lastUpdate').textContent = savedUpdate;
+
+// ─── Init ─────────────────────────────────────────────────
+document.querySelectorAll('input[type=number], select').forEach(el => el.addEventListener('input', calc));
+calc();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function() {
+    navigator.serviceWorker.register("sw.js").then(function(reg) {
+      console.log("SW registered:", reg.scope);
+    }).catch(function(err) {
+      console.log("SW error:", err);
+    });
+  });
+}
+</script>
+</body>
+</html>
